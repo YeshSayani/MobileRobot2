@@ -3,9 +3,15 @@
 <package format="3">
   <name>mr_gazebo</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Gazebo Sim for the robot</description>
   <maintainer email="yeshwanthsayani9@gmail.com">yeshwanth</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>ddr_description</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

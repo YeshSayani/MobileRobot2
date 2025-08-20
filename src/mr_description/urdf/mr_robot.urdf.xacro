@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+<robot name="mr_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+    <xacro:property name="base_l" value="0.35"/>
+    <xacro:property name="base_w" value="0.28"/>
+    <xacro:property name="base_h" value="0.12"/>
+    <xacro:property name="wheel_radius" value="0.05"/>
+    <xacro:property name="wheel_width" value="0.02"/>
+    <xacro:property name="wheel_sep" value="0.26"/>
+    <xacro:property name="lidar_z" value="0.20"/>
+
+    <xacro:macro name="inertial_box" params="m x y z">
+        <inertial>
+            <mass value="${m}"/>
+            <origin xyz="0 0 0"/>
+            <inertia
+                ixx="${(1/12.0)*m*(y*y + z*z)}"
+                iyy="${(1/12.0)*m*(x*x + z*z)}"
+                izz="${(1/12.0)*m*(y*y + x*x)}"
+                ixy="0" ixz="0" iyz="0"/>
+        </inertial>
+    </xacro:macro>
+
+    <!-- Frames -->
+
+    <link name="base_footprint"/>
+    <joint name="base_footprint_joint" type="fixed">
+        <parent link="base_footprint"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 ${base_h/2.0}" rpy="0 0 0"/>
+    </joint>
+
+    <link name="base_link">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry>
+            <material name="gray"><color rgba="0.6 0.6 0.6 1.0"/></material>
+        </visual>
+        <collision>
+            <geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry>
+        </collision>
+        <xacro:inertial_box m="5.0" x="${base_l}" y="${base_w}" z="${base_h}"/>
+    </link>
+
+    <!-- Wheels (cylinders rotate around Y axis) -->
+
+    <xacro:macro name="wheel" params="name x y">
+        <link name="${name}_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+                <geometry><cylinder length="${wheel_width}" radius="${wheel_radius}"/></geometry>
+                <material name="black"><color rgba="0.1 0.1 0.1 1"/></material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+                <geometry><cylinder length="${wheel_width}" radius="${wheel_radius}"/></geometry>
+            </collision>
+            <inertial>
+                <mass value="0.2"/>
+                <inertia ixx="0.0005" iyy="0.0005" izz="0.0005" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+        </link>
+        <joint name="${name}_joint" type="continuous">
+            <parent link="base_link"/>
+            <child  link="${name}_link"/>
+            <origin xyz="${x} ${y} -${base_h/2.0 - wheel_radius}" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+        </joint>
+    </xacro:macro>
+
+    <!-- Wheel positions -->
+  
+    <xacro:wheel name="fl_wheel" x="${ base_l/2.0 - 0.06}" y="${ wheel_sep/2.0}"/>
+    <xacro:wheel name="fr_wheel" x="${ base_l/2.0 - 0.06}" y="-${wheel_sep/2.0}"/>
+    <xacro:wheel name="bl_wheel" x="-${base_l/2.0 - 0.06}" y="${ wheel_sep/2.0}"/>
+    <xacro:wheel name="br_wheel" x="-${base_l/2.0 - 0.06}" y="-${wheel_sep/2.0}"/>
+
+      <!-- LiDAR -->
+  
+    <link name="lidar_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry><cylinder length="0.05" radius="0.03"/></geometry>
+        <material name="blue"><color rgba="0.2 0.4 0.8 1"/></material>
+      </visual>
+      <collision>
+        <geometry><cylinder length="0.05" radius="0.03"/></geometry>
+      </collision>
+      <inertial><mass value="0.2"/><inertia ixx="1e-4" iyy="1e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/></inertial>
+    </link>
+    <joint name="lidar_joint" type="fixed">
+      <parent link="base_link"/>
+      <child  link="lidar_link"/>
+      <origin xyz="0 0 ${lidar_z}" rpy="0 0 0"/>
+    </joint>
+  
+    <!-- IMU -->
+  
+    <link name="imu_link"><inertial><mass value="0.05"/><inertia ixx="5e-5" iyy="5e-5" izz="5e-5" ixy="0" ixz="0" iyz="0"/></inertial></link>
+    <joint name="imu_joint" type="fixed">
+      <parent link="base_link"/><child link="imu_link"/>
+      <origin xyz="0 0 ${base_h/2.0 - 0.02}" rpy="0 0 0"/>
+    </joint>
+  
+    <!-- Gazebo plugins (Classic) -->
+    <gazebo>
+      <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+        <ros>
+          <remapping>cmd_vel:=cmd_vel</remapping>
+          <remapping>odom:=odom</remapping>
+        </ros>
+        <update_rate>50</update_rate>
+        <left_joint>fl_wheel_joint</left_joint>
+        <left_joint>bl_wheel_joint</left_joint>
+        <right_joint>fr_wheel_joint</right_joint>
+        <right_joint>br_wheel_joint</right_joint>
+        <wheel_separation>${wheel_sep}</wheel_separation>
+        <wheel_diameter>${2*wheel_radius}</wheel_diameter>
+        <publish_odom>true</publish_odom>
+        <publish_tf>true</publish_tf>
+        <odometry_frame>odom</odometry_frame>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <command_topic>cmd_vel</command_topic>
+        <odometry_topic>odom</odometry_topic>
+        <velocity_decay>0.0</velocity_decay>
+      </plugin>
+    </gazebo>
+  
+    <!-- LiDAR sensor -->
+  
+    <gazebo reference="lidar_link">
+      <sensor name="lidar" type="ray">
+        <update_rate>15</update_rate>
+        <ray>
+          <scan><horizontal><samples>720</samples><resolution>1</resolution><min_angle>-3.14159</min_angle><max_angle>3.14159</max_angle></horizontal></scan>
+          <range><min>0.12</min><max>8.0</max></range>
+          <noise><type>gaussian</type><mean>0.0</mean><stddev>0.005</stddev></noise>
+        </ray>
+        <plugin name="gazebo_ros_laser" filename="libgazebo_ros_ray_sensor.so">
+          <ros><remapping>scan:=scan</remapping></ros>
+          <frame_name>lidar_link</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+  
+
+    <!-- IMU sensor -->
+  
+    <gazebo reference="imu_link">
+      <sensor name="imu_sensor" type="imu">
+        <update_rate>100</update_rate>
+        <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+          <ros><remapping>imu:=imu/data</remapping></ros>
+          <frame_name>imu_link</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+
+</robot>
+
+
+
+
+
+    
+
+
+
+
+
+
